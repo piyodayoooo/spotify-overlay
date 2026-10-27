@@ -3839,10 +3839,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         float glowPulse = (sinf((float)(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count()) * 3.14159265f / 1750.0f) + 1.0f) / 2.0f;
 
         float colorTintFactor = g_enable_blur ? 0.65f : 1.0f;
-        BYTE bgAlpha = static_cast<BYTE>(std::clamp(220.0f * g_bg_alpha * colorTintFactor, 0.0f, 255.0f));
-        BYTE glowAlpha = static_cast<BYTE>(std::clamp((40.0f + glowPulse * 55.0f) * g_bg_alpha, 0.0f, 255.0f));
-
-        if (g_enable_blur && g_overlay_alpha > 0.01f) {
+        BYTE bgAlpha = static_cast<BYTE>(std::clamp(220.0f * g_bg_alpha, 0.0f, 255.0f));
+        BYTE glowAlpha = static_cast<BYTE>(std::clamp((40.0f + glowPulse * 55.0f) * g_bg_alpha, 0.0f, 255.0f));if (g_enable_blur && g_overlay_alpha > 0.01f) {
             static HDC s_hdcBlurCap = nullptr;
             static HBITMAP s_hBmpBlurCap = nullptr;
             static HBITMAP s_hOldBlurCap = nullptr;
@@ -3903,7 +3901,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
                                 D2D1_LAYER_PARAMETERS blurLp = D2D1::LayerParameters(
                                     cardRect, pCardGeom.Get(), D2D1_ANTIALIAS_MODE_PER_PRIMITIVE,
-                                    D2D1::IdentityMatrix(), std::clamp(g_bg_alpha, 0.05f, 1.0f));
+                                    D2D1::IdentityMatrix(), 1.0f);
                                 pDCRT->PushLayer(&blurLp, pBlurClipLayer.Get());
 
                                 D2D1_POINT_2F targetOffset = D2D1::Point2F(0.0f, 0.0f);
@@ -5078,30 +5076,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         BLENDFUNCTION blend = { AC_SRC_OVER, 0, currentAlpha, AC_SRC_ALPHA };
 
         UpdateLayeredWindow(hwnd, hdcScreen, &ptWinPos, &szWin, hdcMem, &ptSrc, 0, &blend, ULW_ALPHA);
-
-        {
-            static bool s_lastBlurEnabled = false;
-            static int s_lastBlurH = 0;
-            bool wantBlur = g_enable_blur && (g_uiStyle == 0) && (g_overlay_alpha > 0.1f);
-            if (wantBlur != s_lastBlurEnabled || (wantBlur && frameData.currentOverlayH != s_lastBlurH)) {
-                DWM_BLURBEHIND bb = { 0 };
-                HRGN hRgn = nullptr;
-                if (wantBlur) {
-                    hRgn = CreateRoundRectRgn(1, 1, overlayW, frameData.currentOverlayH, 36, 36);
-                    bb.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
-                    bb.fEnable = TRUE;
-                    bb.hRgnBlur = hRgn;
-                }
-                else {
-                    bb.dwFlags = DWM_BB_ENABLE;
-                    bb.fEnable = FALSE;
-                }
-                DwmEnableBlurBehindWindow(hwnd, &bb);
-                if (hRgn) DeleteObject(hRgn);
-                s_lastBlurEnabled = wantBlur;
-                s_lastBlurH = frameData.currentOverlayH;
-            }
-        }
 
         bool isPlayingNow = false;
         bool isFetchingNow = false;
